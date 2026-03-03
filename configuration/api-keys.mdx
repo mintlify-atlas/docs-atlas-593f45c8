@@ -1,0 +1,143 @@
+---
+title: API keys
+description: Configure GitHub and Groq API keys for RepoRAGX
+---
+
+RepoRAGX requires two API keys to function: a GitHub Personal Access Token for fetching repository files and a Groq API Key for the language model.
+
+## Required API keys
+
+### GitHub Personal Access Token
+
+The GitHub Personal Access Token is required to authenticate with GitHub's API and fetch repository files. RepoRAGX uses this token with LangChain's `GithubFileLoader` (src/rag/github_codebase_loader.py:37) to access repository contents.
+
+<Steps>
+  <Step title="Navigate to GitHub settings">
+    Go to [github.com/settings/tokens](https://github.com/settings/tokens) and click "Generate new token"
+  </Step>
+  
+  <Step title="Choose token type">
+    Select "Fine-grained personal access token" for better security control
+  </Step>
+  
+  <Step title="Configure permissions">
+    Grant the token **read-only** access with the `content:read` permission. This allows RepoRAGX to read repository files without write access.
+  </Step>
+  
+  <Step title="Generate and copy">
+    Generate the token and copy it immediately. GitHub will only show it once.
+  </Step>
+</Steps>
+
+### Groq API Key
+
+The Groq API Key provides access to Groq's high-speed LLM inference service. RepoRAGX uses this for generating context-aware answers based on retrieved code chunks.
+
+<Steps>
+  <Step title="Sign up for Groq">
+    Visit [console.groq.com](https://console.groq.com) and create a free account
+  </Step>
+  
+  <Step title="Navigate to API keys">
+    Go to [console.groq.com/keys](https://console.groq.com/keys) in the Groq console
+  </Step>
+  
+  <Step title="Generate API key">
+    Click "Create API Key" and give it a descriptive name
+  </Step>
+  
+  <Step title="Copy the key">
+    Copy the generated API key for use with RepoRAGX
+  </Step>
+</Steps>
+
+## Providing API keys
+
+RepoRAGX supports two methods for providing API keys:
+
+### Interactive prompt (recommended)
+
+When you run `python -m src.main`, you'll be prompted to enter your API keys securely:
+
+```bash
+GitHub Personal Access Token: ********
+Groq API Key: ********
+```
+
+The application uses Python's `getpass` module (src/main.py:25-26) to securely read the keys without displaying them in your terminal.
+
+### Environment variables
+
+You can also set environment variables using a `.env` file:
+
+<Steps>
+  <Step title="Create .env file">
+    Copy the example file:
+    ```bash
+    cp .env.example .env
+    ```
+  </Step>
+  
+  <Step title="Add your keys">
+    Edit `.env` and replace the placeholder values:
+    ```bash
+    GITHUB_PERSONAL_ACCESS_TOKEN=ghp_your_actual_token_here
+    GROQ_API_KEY=gsk_your_actual_key_here
+    ```
+  </Step>
+  
+  <Step title="Load environment">
+    RepoRAGX automatically loads the `.env` file using `python-dotenv` (src/main.py:11)
+  </Step>
+</Steps>
+
+<Note>
+If keys are provided both via environment variables and interactive prompts, the interactive prompt values will override environment variables (src/main.py:27-28).
+</Note>
+
+## Security best practices
+
+<Warning>
+Never commit API keys to version control. Always add `.env` to your `.gitignore` file.
+</Warning>
+
+### Protecting your keys
+
+- **Never hardcode** API keys directly in source code
+- **Use .gitignore** to exclude `.env` files from version control
+- **Rotate keys regularly** if you suspect they may have been exposed
+- **Use fine-grained tokens** with minimal required permissions
+- **Set expiration dates** on GitHub tokens when possible
+- **Store keys securely** using password managers or secret management services
+
+### Key validation
+
+RepoRAGX validates that the Groq API key is present before initializing the LLM:
+
+```python
+api_key = os.getenv("GROQ_API_KEY")
+if not api_key:
+    raise ValueError("GROQ_API_KEY not found in environment")
+```
+
+<Tip>
+If you encounter authentication errors, verify that your GitHub token has the correct permissions and hasn't expired.
+</Tip>
+
+## Testing your configuration
+
+After configuring your API keys, test them by running:
+
+```bash
+python -m src.main
+```
+
+If your keys are valid, you'll see:
+
+```
+Initializing github loader.....
+Fetching files from github....
+Initializing Groq LLM...
+```
+
+If there are authentication issues, you'll receive specific error messages indicating which key is invalid.

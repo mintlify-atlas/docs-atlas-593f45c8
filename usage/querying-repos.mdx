@@ -1,0 +1,210 @@
+---
+title: Querying repositories
+description: Learn how to ask effective questions and get context-aware answers from your indexed codebase
+---
+
+## How querying works
+
+Once your repository is indexed, you can ask questions in natural language. RepoRAGX uses a RAG (Retrieval-Augmented Generation) pipeline to answer:
+
+<Steps>
+  <Step title="Query embedding">
+    Your question is converted into a vector embedding using the same Sentence Transformers model (`all-MiniLM-L6-v2`) used during indexing.
+  </Step>
+
+  <Step title="Similarity search">
+    ChromaDB performs a cosine similarity search to find the top-K most relevant code chunks (default: 5 chunks).
+  </Step>
+
+  <Step title="Context retrieval">
+    The most relevant code snippets are retrieved along with their file path metadata and similarity scores.
+  </Step>
+
+  <Step title="LLM generation">
+    The retrieved context and your question are sent to the Groq LLM (`llama-3.3-70b-versatile` by default), which generates a context-aware answer.
+  </Step>
+</Steps>
+
+## Asking questions
+
+At the main prompt, type your question and press Enter:
+
+```bash
+Ask anything ('exit' to quit): Where is authentication implemented?
+```
+
+You'll see diagnostic output showing the retrieval process:
+
+```bash
+Running RAG for query: Where is authentication implemented?
+Retrieving documents for query: 'Where is authentication implemented?'
+Top K: 5, Score threshold: 0.0
+Retrieved 5 documents (after filtering)
+```
+
+Then the LLM's answer:
+
+```bash
+> Authentication is implemented in server/controllers/authController.js. The file contains functions for user registration, login, and token verification using JWT tokens.
+```
+
+## Types of effective queries
+
+RepoRAGX works best with specific, code-focused questions:
+
+### Location queries
+
+Ask where specific functionality is implemented:
+
+<CodeGroup>
+```bash General location
+Where is error handling implemented?
+```
+
+```bash Specific feature
+Where is the database connection configured?
+```
+
+```bash Architecture
+Which files handle API routing?
+```
+</CodeGroup>
+
+### Implementation queries
+
+Ask how something works:
+
+<CodeGroup>
+```bash Functionality
+How does the text splitting work?
+```
+
+```bash Data flow
+How are embeddings generated and stored?
+```
+
+```bash Integration
+How does the RAG retrieval process work?
+```
+</CodeGroup>
+
+### Discovery queries
+
+Find out what exists in the codebase:
+
+<CodeGroup>
+```bash Features
+What API endpoints are available?
+```
+
+```bash Dependencies
+What external libraries are used for vector storage?
+```
+
+```bash Configuration
+What environment variables are required?
+```
+</CodeGroup>
+
+### Explanation queries
+
+Get explanations of existing code:
+
+<CodeGroup>
+```bash Purpose
+What does the GitHubCodeBaseLoader class do?
+```
+
+```bash Behavior
+What file extensions are excluded during loading?
+```
+
+```bash Parameters
+What parameters does the RAGRetriever.retrieve() method accept?
+```
+</CodeGroup>
+
+## Understanding retrieval results
+
+### Retrieval parameters
+
+The RAG retriever uses these default parameters (defined in `src/rag/rag_retriever.py:7`):
+
+- **top_k**: `5` - Number of most relevant chunks to retrieve
+- **score_threshold**: `0.0` - Minimum similarity score (0-1 range)
+
+Results are ranked by similarity score, where `similarity_score = 1 - distance`.
+
+### Context provided to LLM
+
+Each retrieved chunk includes:
+
+- **File path**: The source file location (e.g., `src/rag/github_codebase_loader.py`)
+- **Content**: The actual code snippet
+- **Similarity score**: How relevant the chunk is to your query
+- **Rank**: Position in the results (1-5 by default)
+
+The LLM receives all this context formatted as:
+
+```
+--- File: src/rag/groq_llm.py ---
+[code content]
+
+--- File: src/rag/rag_retriever.py ---
+[code content]
+```
+
+## No results found
+
+If your query doesn't match any code in the repository, you'll see:
+
+```bash
+No documents found
+> No relevant context found to answer the question.
+```
+
+<Tip>
+  Try rephrasing your question or using different keywords that might appear in the actual code.
+</Tip>
+
+## Continuous interaction
+
+After each answer, you'll see the prompt again:
+
+```bash
+Ask anything ('exit' to quit): 
+```
+
+You can ask as many questions as you want in a single session. Each query is independent and uses the same indexed vector store.
+
+## Exiting the session
+
+To end your session and exit the application, type `exit`:
+
+```bash
+Ask anything ('exit' to quit): exit
+```
+
+The comparison is case-insensitive and strips whitespace, so `EXIT`, `Exit`, and ` exit ` all work.
+
+## Best practices
+
+<Accordion title="Be specific with terminology">
+  Use terms that are likely to appear in the actual code. If you're looking for database functionality, use terms like "database", "connection", "query" rather than vague terms.
+</Accordion>
+
+<Accordion title="Ask one thing at a time">
+  Break complex questions into smaller, focused queries. Instead of "How does the entire RAG pipeline work?", ask about specific components like "How are documents chunked?" then "How are embeddings generated?"
+</Accordion>
+
+<Accordion title="Reference specific files when known">
+  If you know a file exists, mention it: "What does the main.py file do?" or "Explain the GitHubCodeBaseLoader class"
+</Accordion>
+
+<Accordion title="Use code-related language">
+  Frame questions in programming terms: "functions", "classes", "methods", "endpoints", "configuration", etc.
+</Accordion>
+
+<Accordion title="Iterate on unclear answers">
+  If an answer isn't clear or complete, ask follow-up questions to drill deeper into specific aspects.
+</Accordion>

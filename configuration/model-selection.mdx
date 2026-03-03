@@ -1,0 +1,225 @@
+---
+title: Model selection
+description: Configure and customize the Groq LLM model used by RepoRAGX
+---
+
+RepoRAGX uses Groq's high-speed LLM inference service for generating answers. You can choose from multiple models based on your performance and accuracy requirements.
+
+## Default model
+
+RepoRAGX uses **llama-3.3-70b-versatile** as the default model (src/main.py:29). This model provides an excellent balance of:
+
+- Fast inference speed through Groq's optimized infrastructure
+- Strong code understanding and reasoning capabilities
+- Support for large context windows
+- High-quality answer generation
+
+## Specifying a custom model
+
+You can specify a different model when starting RepoRAGX:
+
+### Interactive prompt
+
+When running the application, you'll be prompted for a model name:
+
+```bash
+python -m src.main
+```
+
+```
+Model Name (default: llama-3.3-70b-versatile, see Groq docs for supported models): 
+```
+
+Options:
+- **Press Enter** to use the default model
+- **Type a model name** to use a different model (e.g., `mixtral-8x7b-32768`)
+
+<Note>
+The model selection happens at startup (src/main.py:29) and cannot be changed during a chat session.
+</Note>
+
+## Available Groq models
+
+Groq supports multiple open-source LLMs. Popular options include:
+
+### Llama models
+
+| Model Name | Context Length | Best For |
+|------------|----------------|----------|
+| `llama-3.3-70b-versatile` | 128K tokens | **Default** - General purpose, excellent code understanding |
+| `llama-3.1-70b-versatile` | 128K tokens | Previous generation, still highly capable |
+| `llama-3.1-8b-instant` | 128K tokens | Faster responses, lower resource usage |
+
+### Mixtral models
+
+| Model Name | Context Length | Best For |
+|------------|----------------|----------|
+| `mixtral-8x7b-32768` | 32K tokens | Fast inference, good for shorter contexts |
+
+### Other models
+
+| Model Name | Context Length | Best For |
+|------------|----------------|----------|
+| `gemma2-9b-it` | 8K tokens | Efficient, good for simple queries |
+
+<Tip>
+For the most up-to-date list of supported models, check the [Groq documentation](https://console.groq.com/docs/models).
+</Tip>
+
+## Model configuration
+
+The Groq LLM is initialized with specific parameters (src/rag/groq_llm.py:9-26):
+
+```python
+class GroqLLM:
+    def __init__(
+        self,
+        model_name,
+        temperature=0.1,
+        max_tokens=1024
+    ):
+        self.llm = ChatGroq(
+            groq_api_key=api_key,
+            model_name=model_name,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+```
+
+### Configuration parameters
+
+#### model_name (required)
+
+The identifier of the Groq model to use. This is the only parameter you can customize via the CLI prompt.
+
+#### temperature (default: 0.1)
+
+Controls response randomness:
+- **0.1** (current default) - More deterministic, consistent answers
+- **0.5** - Balanced creativity and consistency
+- **1.0** - More creative but less predictable responses
+
+<Note>
+Lower temperatures are recommended for code-related queries where accuracy is critical.
+</Note>
+
+#### max_tokens (default: 1024)
+
+Maximum number of tokens in the generated response:
+- **1024** (current default) - Suitable for most code questions
+- **2048** - Longer, more detailed explanations
+- **4096** - Very comprehensive answers
+
+<Warning>
+Currently, `temperature` and `max_tokens` are hardcoded and cannot be customized without modifying the source code.
+</Warning>
+
+## How the model is used
+
+RepoRAGX uses the selected model in a RAG pipeline:
+
+<Steps>
+  <Step title="Query embedding">
+    Your question is converted to a vector embedding using Sentence Transformers
+  </Step>
+  
+  <Step title="Context retrieval">
+    ChromaDB performs cosine similarity search to find the top-K most relevant code chunks (default: 5)
+  </Step>
+  
+  <Step title="Prompt construction">
+    Retrieved code chunks are formatted with file paths and combined with your question:
+    ```python
+    prompt = f"""
+        Use the following context to answer the question concisely.
+
+        Context:
+        {context}
+
+        Question: {query}
+
+        Answer:
+        """
+    ```
+  </Step>
+  
+  <Step title="LLM inference">
+    The prompt is sent to your selected Groq model for answer generation (src/rag/groq_llm.py:55)
+  </Step>
+</Steps>
+
+## Performance considerations
+
+### Model size vs. speed
+
+- **Larger models** (70B parameters): Higher quality answers, slightly slower
+- **Smaller models** (8B parameters): Faster responses, may be less accurate for complex code
+
+### Context window size
+
+Different models support different context lengths:
+
+- **128K tokens**: Can handle very large codebases and multiple file contexts
+- **32K tokens**: Sufficient for most use cases
+- **8K tokens**: May truncate context for large retrievals
+
+<Tip>
+For large repositories with complex queries, prefer models with larger context windows like `llama-3.3-70b-versatile`.
+</Tip>
+
+## Changing models mid-session
+
+To use a different model:
+
+1. Exit the current session by typing `exit`
+2. Restart the application with `python -m src.main`
+3. Enter your desired model name when prompted
+
+<Note>
+The vector store persists between sessions, so you won't need to re-index the repository.
+</Note>
+
+## Model validation
+
+RepoRAGX validates the Groq API key but doesn't validate model names upfront. If you specify an invalid model:
+
+```bash
+Model Name: invalid-model-name
+```
+
+You'll receive an error from Groq when the first query is processed:
+
+```
+Error: Model 'invalid-model-name' not found
+```
+
+<Warning>
+Always verify model names against the [Groq models documentation](https://console.groq.com/docs/models) before use.
+</Warning>
+
+## Example usage
+
+Using a faster model for quick queries:
+
+```bash
+$ python -m src.main
+GitHub Personal Access Token: ********
+Groq API Key: ********
+Model Name (default: llama-3.3-70b-versatile): llama-3.1-8b-instant
+Repo (owner/repo): facebook/react
+Branch (default: main): main
+
+Initializing Groq LLM...
+Fetching files from github....
+```
+
+Using the default model:
+
+```bash
+$ python -m src.main
+GitHub Personal Access Token: ********
+Groq API Key: ********
+Model Name (default: llama-3.3-70b-versatile): [Enter]
+Repo (owner/repo): vercel/next.js
+Branch (default: main): main
+```

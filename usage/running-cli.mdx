@@ -1,0 +1,140 @@
+---
+title: Running the CLI
+description: Learn how to run RepoRAGX and interact with the command-line interface
+---
+
+## Starting the application
+
+RepoRAGX runs as an interactive CLI tool. To start it, run:
+
+```bash
+python -m src.main
+```
+
+## Welcome banner
+
+When you start RepoRAGX, you'll see the ASCII art banner:
+
+```
+/**
+ *    __________                    __________    _____    ____________  ___
+ *    \______   \ ____ ______   ____\______   \  /  _  \  /  _____/\   \/  /
+ *     |       _// __ \\____ \ /  _ \|       _/ /  /_\  \/   \  ___ \     / 
+ *     |    |   \  ___/|  |_> >  <_> )    |   \/    |    \    \_\  \/     \ 
+ *     |____|_  /\___  >   __/ \____/|____|_  /\____|__  /\______  /___/\  \
+ *            \/     \/|__|                 \/         \/        \/      \_/
+ */
+
+Chat with your github repository
+```
+
+## Interactive setup flow
+
+After the banner, RepoRAGX will prompt you for the required information to connect to your repository and start the RAG pipeline.
+
+<Steps>
+  <Step title="Enter GitHub token">
+    The first prompt asks for your GitHub Personal Access Token. This is hidden for security:
+
+    ```bash
+    GitHub Personal Access Token: ********
+    ```
+
+    The token needs `content:read` permission to access repository files. Get yours at [github.com/settings/tokens](https://github.com/settings/tokens).
+  </Step>
+
+  <Step title="Enter Groq API key">
+    Next, you'll be prompted for your Groq API key (also hidden):
+
+    ```bash
+    Groq API Key: ********
+    ```
+
+    Get your API key from [console.groq.com/keys](https://console.groq.com/keys).
+  </Step>
+
+  <Step title="Select LLM model">
+    Choose which Groq model to use for answering questions:
+
+    ```bash
+    Model Name (default: llama-3.3-70b-versatile, see Groq docs for supported models): 
+    ```
+
+    Press Enter to use the default `llama-3.3-70b-versatile` model, or specify a different model supported by Groq.
+  </Step>
+
+  <Step title="Specify repository">
+    Enter the repository you want to chat with:
+
+    ```bash
+    Repo (owner/repo): AnmolTutejaGitHub/RepoRAGX
+    ```
+
+    Use the format `owner/repo` (e.g., `facebook/react`, `vercel/next.js`).
+  </Step>
+
+  <Step title="Select branch">
+    Choose which branch to index:
+
+    ```bash
+    Branch (default: main): main
+    ```
+
+    Press Enter to use `main`, or specify another branch like `develop` or `staging`.
+  </Step>
+</Steps>
+
+## Loading and indexing process
+
+Once you've provided all inputs, RepoRAGX starts the data ingestion pipeline:
+
+```bash
+Initilizing github loader.....
+Fetching files from github....
+Loaded 42 files from github!
+Splitting documents into chunks...
+chunking completed
+Initilizing RAG Retriver pipeline
+Initializing Groq LLM...
+```
+
+<Note>
+  The indexing process downloads all repository files (excluding binaries and common folders like `node_modules/`), chunks them using language-aware splitting, generates embeddings, and stores them in ChromaDB.
+</Note>
+
+### What gets loaded
+
+RepoRAGX filters out files that aren't useful for code understanding:
+
+- **Excluded file types**: Images (`.png`, `.jpg`, `.svg`), archives (`.zip`, `.tar`), binaries (`.exe`, `.dll`), media files (`.mp3`, `.mp4`), and more
+- **Excluded folders**: `node_modules/`, `.git/`, `dist/`, `build/`, `__pycache__/`, `venv/`, `.venv/`
+
+### Storage location
+
+Vector embeddings are persisted locally in:
+
+```bash
+~/.RepoRAGX/vector_store/<owner>_<repo>/
+```
+
+This means you only need to index a repository once. Future runs will reuse the existing embeddings.
+
+## Ready to chat
+
+Once indexing completes, you'll see the main query prompt:
+
+```bash
+Ask anything ('exit' to quit): 
+```
+
+You're now ready to ask questions about the codebase. See the [Querying repositories](/usage/querying-repos) guide for details on how to interact with your indexed repository.
+
+## Exiting the application
+
+To exit RepoRAGX at any time, type `exit` at the query prompt:
+
+```bash
+Ask anything ('exit' to quit): exit
+```
+
+The application will terminate and return you to your shell.

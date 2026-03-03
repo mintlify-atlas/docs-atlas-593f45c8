@@ -1,0 +1,233 @@
+---
+title: Installation
+description: Set up Python 3.12, virtual environment, and dependencies for RepoRAGX
+---
+
+# Installation
+
+RepoRAGX requires Python 3.12 and a few dependencies. This guide will walk you through setting up your environment.
+
+<Note>
+  **Prerequisites**: You'll need Git installed on your system to clone the repository.
+</Note>
+
+## System requirements
+
+- **Python**: 3.12 (required)
+- **Operating system**: Linux, macOS, or Windows
+- **Disk space**: ~2GB for dependencies and model weights
+- **Memory**: 4GB RAM minimum (8GB recommended for large repositories)
+
+## Step 1: Clone the repository
+
+First, clone the RepoRAGX repository from GitHub:
+
+```bash
+git clone https://github.com/AnmolTutejaGitHub/RepoRAGX.git
+cd RepoRAGX
+```
+
+## Step 2: Set up a virtual environment
+
+RepoRAGX works best in an isolated Python environment. Choose one of the following methods:
+
+<Tabs>
+  <Tab title="Conda (recommended)">
+    Conda is recommended for its superior dependency management and Python version control.
+
+    ```bash
+    # Create a virtual environment with Python 3.12
+    conda create -p venv python==3.12
+
+    # Activate the environment
+    conda activate venv/
+    ```
+
+    <Tip>
+      The `-p venv` flag creates the environment in a local `venv/` directory rather than in Conda's default location. This keeps your project self-contained.
+    </Tip>
+  </Tab>
+  
+  <Tab title="venv">
+    If you don't have Conda installed, you can use Python's built-in `venv` module:
+
+    ```bash
+    # Create a virtual environment
+    python3.12 -m venv venv
+
+    # Activate the environment (Linux/macOS)
+    source venv/bin/activate
+
+    # Activate the environment (Windows)
+    venv\Scripts\activate
+    ```
+
+    <Note>
+      Make sure you have Python 3.12 installed on your system. You can check your version with `python3 --version`.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Step 3: Install dependencies
+
+With your virtual environment activated, install all required packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+This will install the following dependencies:
+
+<CodeGroup>
+```txt requirements.txt
+langchain==1.2.10
+langchain-community==0.4.1
+langchain-core==1.2.14
+python-dotenv==1.2.1
+sentence-transformers==5.2.3
+chromadb==1.5.1
+langchain_groq==1.1.2
+```
+</CodeGroup>
+
+### What gets installed
+
+<AccordionGroup>
+  <Accordion title="LangChain packages">
+    - **langchain**: Core framework for building LLM applications
+    - **langchain-community**: Community integrations including `GithubFileLoader`
+    - **langchain-core**: Shared abstractions and base classes
+    - **langchain_groq**: Groq LLM integration for `llama-3.3-70b-versatile`
+  </Accordion>
+  
+  <Accordion title="Embedding and vector store">
+    - **sentence-transformers**: Provides the `all-MiniLM-L6-v2` embedding model
+    - **chromadb**: Local vector database for storing and querying embeddings
+  </Accordion>
+  
+  <Accordion title="Utilities">
+    - **python-dotenv**: Loads environment variables from `.env` files
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  The first time you run RepoRAGX, Sentence Transformers will download the `all-MiniLM-L6-v2` model (~90MB). This happens automatically and only needs to be done once.
+</Warning>
+
+## Step 4: Verify installation
+
+Verify that RepoRAGX is installed correctly:
+
+```bash
+python -m src.main --help
+```
+
+You should see the RepoRAGX ASCII art banner:
+
+```
+/**
+ *    __________                    __________    _____    ____________  ___
+ *    \______   \ ____ ______   ____\______   \  /  _  \  /  _____/\   \/  /
+ *     |       _// __ \\____ \ /  _ \|       _/ /  /_\  \/   \  ___ \     / 
+ *     |    |   \  ___/|  |_> >  <_> )    |   \/    |    \    \_\  \/     \ 
+ *     |____|_  /\___  >   __/ \____/|____|_  /\____|__  /\______  /___/\  \
+ *            \/     \/|__|                 \/         \/        \/      \_/
+ */
+
+Chat with your github repository
+```
+
+<Note>
+  Press `Ctrl+C` to exit if it starts prompting for credentials.
+</Note>
+
+## Project structure
+
+After installation, your project structure should look like this:
+
+```
+RepoRAGX/
+├── venv/                          # Virtual environment (ignored by git)
+├── src/
+│   ├── main.py                    # CLI entry point
+│   └── rag/
+│       ├── __init__.py
+│       ├── github_codebase_loader.py  # Fetches files from GitHub
+│       ├── text_splitter.py           # Language-aware chunking
+│       ├── embedding_manager.py       # Sentence Transformer embeddings
+│       ├── vector_store.py            # ChromaDB vector storage
+│       ├── rag_retriever.py           # Similarity search & retrieval
+│       └── groq_llm.py               # LLM integration
+├── requirements.txt
+├── .env.example
+└── README.md
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Python 3.12 not found">
+    If you don't have Python 3.12, install it using:
+    
+    **macOS (Homebrew)**:
+    ```bash
+    brew install python@3.12
+    ```
+    
+    **Ubuntu/Debian**:
+    ```bash
+    sudo add-apt-repository ppa:deadsnakes/ppa
+    sudo apt update
+    sudo apt install python3.12 python3.12-venv
+    ```
+    
+    **Windows**: Download from [python.org](https://www.python.org/downloads/)
+  </Accordion>
+  
+  <Accordion title="pip install fails">
+    If you encounter errors during `pip install`, try:
+    
+    ```bash
+    # Upgrade pip first
+    pip install --upgrade pip
+    
+    # Then install dependencies
+    pip install -r requirements.txt
+    ```
+    
+    If you're on macOS with Apple Silicon, you may need to install Rust:
+    ```bash
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    ```
+  </Accordion>
+  
+  <Accordion title="ChromaDB errors">
+    If ChromaDB fails to initialize, ensure you have write permissions:
+    
+    ```bash
+    # The vector store is created at:
+    ls -la ~/.RepoRAGX/vector_store
+    
+    # If it doesn't exist, it will be created automatically
+    ```
+  </Accordion>
+  
+  <Accordion title="Module not found errors">
+    Make sure your virtual environment is activated:
+    
+    ```bash
+    # Check which Python you're using
+    which python
+    
+    # Should show path to venv/bin/python
+    # If not, activate the environment again:
+    conda activate venv/  # or source venv/bin/activate
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<Card title="Quick start guide" icon="rocket" href="/quickstart">
+  Learn how to get your API keys and run your first query
+</Card>

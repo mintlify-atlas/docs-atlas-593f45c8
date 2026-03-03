@@ -1,0 +1,266 @@
+---
+title: Example queries
+description: Real-world examples of questions you can ask and the types of answers you can expect
+---
+
+## Example session
+
+Here's a complete example session showing how to interact with RepoRAGX:
+
+```bash
+python -m src.main
+```
+
+```
+/**
+ *    __________                    __________    _____    ____________  ___
+ *    \______   \ ____ ______   ____\______   \  /  _  \  /  _____/\   \/  /
+ *     |       _// __ \\____ \ /  _ \|       _/ /  /_\  \/   \  ___ \     / 
+ *     |    |   \  ___/|  |_> >  <_> )    |   \/    |    \    \_\  \/     \ 
+ *     |____|_  /\___  >   __/ \____/|____|_  /\____|__  /\______  /___/\  \
+ *            \/     \/|__|                 \/         \/        \/      \_/
+ */
+
+Chat with your github repository
+
+GitHub Personal Access Token: ********
+Groq API Key: ********
+Model Name (default: llama-3.3-70b-versatile, see Groq docs for supported models): 
+Repo (owner/repo): facebook/react
+Branch (default: main): main
+
+Initilizing github loader.....
+Fetching files from github....
+Loaded 1247 files from github!
+Splitting documents into chunks...
+chunking completed
+Initilizing RAG Retriver pipeline
+Initializing Groq LLM...
+
+Ask anything ('exit' to quit): 
+```
+
+## Architecture and structure queries
+
+### Finding main entry points
+
+<CodeGroup>
+```bash Query
+Ask anything ('exit' to quit): What is the main entry point of this application?
+```
+
+```bash Response
+Running RAG for query: What is the main entry point of this application?
+Retrieving documents for query: 'What is the main entry point of this application?'
+Top K: 5, Score threshold: 0.0
+Retrieved 5 documents (after filtering)
+
+> The main entry point is src/main.py. When executed with `python -m src.main`, it initializes the CLI interface, prompts for GitHub and Groq API credentials, loads the specified repository, creates vector embeddings, and starts an interactive chat loop where users can query the codebase.
+```
+</CodeGroup>
+
+### Understanding project structure
+
+<CodeGroup>
+```bash Query
+Ask anything ('exit' to quit): What components make up the RAG pipeline?
+```
+
+```bash Response
+Running RAG for query: What components make up the RAG pipeline?
+Retrieving documents for query: 'What components make up the RAG pipeline?'
+Top K: 5, Score threshold: 0.0
+Retrieved 5 documents (after filtering)
+
+> The RAG pipeline consists of several components in the src/rag/ directory:
+> 1. GitHubCodeBaseLoader - Fetches repository files from GitHub
+> 2. TextSplitter - Chunks documents using language-aware splitting
+> 3. EmbeddingManager - Generates vector embeddings using Sentence Transformers
+> 4. VectorStore - Manages ChromaDB storage and retrieval
+> 5. RAGRetriever - Performs similarity search and document retrieval
+> 6. GroqLLM - Handles LLM inference using the Groq API
+```
+</CodeGroup>
+
+## Implementation details
+
+### How features work
+
+<CodeGroup>
+```bash Query
+Ask anything ('exit' to quit): How does the text splitting work?
+```
+
+```bash Response
+Running RAG for query: How does the text splitting work?
+Retrieving documents for query: 'How does the text splitting work?'
+Top K: 5, Score threshold: 0.0
+Retrieved 5 documents (after filtering)
+
+> Text splitting is handled by the TextSplitter class in src/rag/text_splitter.py. It uses LangChain's RecursiveCharacterTextSplitter with language-aware splitting. The class maps file extensions to specific Language types (supporting 25+ languages like Python, JavaScript, TypeScript, Java, C++, Go, Rust, etc.). For each document, it selects the appropriate splitter based on file extension, using language-specific separators. Default chunk size is 1000 characters with 200 character overlap. Files without recognized extensions use generic splitting with newline and space separators.
+```
+</CodeGroup>
+
+### Configuration and settings
+
+<CodeGroup>
+```bash Query
+Ask anything ('exit' to quit): What files and folders are excluded during loading?
+```
+
+```bash Response
+Running RAG for query: What files and folders are excluded during loading?
+Retrieving documents for query: 'What files and folders are excluded during loading?'
+Top K: 5, Score threshold: 0.0
+Retrieved 5 documents (after filtering)
+
+> The GitHubCodeBaseLoader in src/rag/github_codebase_loader.py excludes several categories:
+>
+> Excluded file extensions: .png, .jpg, .jpeg, .gif, .svg, .ico, .bmp, .webp, .zip, .tar, .gz, .rar, .7z, .exe, .dll, .so, .o, .a, .dylib, .mp3, .mp4, .wav, .avi, .mov, .pdf, .doc, .docx, .xls, .xlsx, .ppt, .pptx, .lock, .DS_Store, .bin, .ipynb, .woff, .woff2, .ttf, .eot, .otf, .pyc, .class, .jar, .db, .sqlite, .sqlite3, .min.js, .min.css
+>
+> Excluded folders: node_modules/, .git/, dist/, build/, __pycache__/, venv/, .venv/
+```
+</CodeGroup>
+
+## Specific class and function queries
+
+### Understanding classes
+
+<CodeGroup>
+```bash Query
+Ask anything ('exit' to quit): What does the RAGRetriever class do?
+```
+
+```bash Response
+Running RAG for query: What does the RAGRetriever class do?
+Retrieving documents for query: 'What does the RAGRetriever class do?'
+Top K: 5, Score threshold: 0.0
+Retrieved 5 documents (after filtering)
+
+> The RAGRetriever class in src/rag/rag_retriever.py handles document retrieval from the vector store. It takes a query string, generates an embedding using the EmbeddingManager, performs a cosine similarity search in ChromaDB, and returns the top-K most relevant document chunks. The retrieve() method accepts parameters for top_k (default: 5) and score_threshold (default: 0.0). It returns documents with their content, metadata (including file paths), similarity scores, and ranking.
+```
+</CodeGroup>
+
+### Method parameters
+
+<CodeGroup>
+```bash Query
+Ask anything ('exit' to quit): What parameters does the GroqLLM rag method accept?
+```
+
+```bash Response
+Running RAG for query: What parameters does the GroqLLM rag method accept?
+Retrieving documents for query: 'What parameters does the GroqLLM rag method accept?'
+Top K: 5, Score threshold: 0.0
+Retrieved 5 documents (after filtering)
+
+> The rag() method in src/rag/groq_llm.py:28 accepts three parameters:
+> 1. query (required) - The user's question as a string
+> 2. retriever (required) - A RAGRetriever instance used to fetch relevant context
+> 3. top_k (optional, default: 5) - Number of documents to retrieve
+>
+> The method retrieves relevant code chunks using the retriever, formats them with file paths, constructs a prompt with context and the question, and invokes the LLM to generate an answer.
+```
+</CodeGroup>
+
+## API and integration queries
+
+### External dependencies
+
+<CodeGroup>
+```bash Query
+Ask anything ('exit' to quit): What embedding model is used?
+```
+
+```bash Response
+Running RAG for query: What embedding model is used?
+Retrieving documents for query: 'What embedding model is used?'
+Top K: 5, Score threshold: 0.0
+Retrieved 5 documents (after filtering)
+
+> The embedding model used is Sentence Transformers' 'all-MiniLM-L6-v2', which is loaded in the EmbeddingManager class. This model generates 384-dimensional vector embeddings for text chunks and queries.
+```
+</CodeGroup>
+
+### Environment requirements
+
+<CodeGroup>
+```bash Query
+Ask anything ('exit' to quit): What environment variables are required?
+```
+
+```bash Response
+Running RAG for query: What environment variables are required?
+Retrieving documents for query: 'What environment variables are required?'
+Top K: 5, Score threshold: 0.0
+Retrieved 5 documents (after filtering)
+
+> Two environment variables are required:
+> 1. GITHUB_PERSONAL_ACCESS_TOKEN - Set via the getpass prompt at startup and used by the GitHubCodeBaseLoader to authenticate with GitHub's API
+> 2. GROQ_API_KEY - Set via the getpass prompt and used by the GroqLLM class to authenticate with Groq's API
+>
+> Both are set programmatically via os.environ in src/main.py after user input.
+```
+</CodeGroup>
+
+## Data flow and process queries
+
+### Understanding the pipeline
+
+<CodeGroup>
+```bash Query
+Ask anything ('exit' to quit): How are documents stored in the vector database?
+```
+
+```bash Response
+Running RAG for query: How are documents stored in the vector database?
+Retrieving documents for query: 'How are documents stored in the vector database?'
+Top K: 5, Score threshold: 0.0
+Retrieved 5 documents (after filtering)
+
+> In src/main.py:41-44, documents are stored in ChromaDB through the VectorStore class. The process:
+> 1. Extract page_content from each document chunk
+> 2. Generate embeddings for all texts using EmbeddingManager
+> 3. Call vector_store.add_documents() with both chunks and their embeddings
+> 4. Store in a collection named after the repo (with '/' replaced by '_')
+> 5. Persist to disk at ~/.RepoRAGX/vector_store/
+>
+> ChromaDB uses cosine similarity indexing for efficient retrieval.
+```
+</CodeGroup>
+
+### Retrieval process
+
+<CodeGroup>
+```bash Query
+Ask anything ('exit' to quit): What happens when I ask a question?
+```
+
+```bash Response
+Running RAG for query: What happens when I ask a question?
+Retrieving documents for query: 'What happens when I ask a question?'
+Top K: 5, Score threshold: 0.0
+Retrieved 5 documents (after filtering)
+
+> When you ask a question in src/main.py:49-54:
+> 1. Your query is passed to llm.rag()
+> 2. The GroqLLM generates an embedding for your query
+> 3. RAGRetriever performs cosine similarity search in ChromaDB
+> 4. Top 5 most relevant code chunks are retrieved with file paths
+> 5. Context is formatted with file headers and content
+> 6. A prompt is constructed with context + your question
+> 7. The Groq LLM (llama-3.3-70b-versatile) generates an answer
+> 8. The answer is printed to the console
+> 9. The prompt reappears for your next question
+```
+</CodeGroup>
+
+## Tips for effective queries
+
+<Tip>
+  The examples above show how RepoRAGX provides detailed, context-aware answers by retrieving relevant code chunks. For best results, ask specific questions about code location, implementation details, or architectural decisions.
+</Tip>
+
+<Note>
+  All answers include references to the actual file paths where the code is located, making it easy to navigate to the source and explore further.
+</Note>

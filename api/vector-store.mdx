@@ -1,0 +1,221 @@
+---
+title: 'Vector store'
+description: 'Persistent vector database using ChromaDB for semantic search'
+---
+
+The `VectorStore` class provides a persistent vector database for storing and querying document embeddings using ChromaDB. It handles collection management, document storage, and similarity search operations.
+
+## Class definition
+
+```python
+class VectorStore:
+    def __init__(self, collection_name, persist_directory)
+```
+
+## Constructor parameters
+
+<ParamField path="collection_name" type="str" required>
+  Name of the ChromaDB collection to create or use. Typically formatted as the repository name with underscores (e.g., `"facebook_react"`).
+</ParamField>
+
+<ParamField path="persist_directory" type="str" required>
+  Directory path where the ChromaDB database will be persisted. The database files are stored here for reuse across sessions.
+</ParamField>
+
+<Note>
+  The constructor automatically initializes the vector store by creating the persist directory if needed, connecting to ChromaDB, and setting up the collection with cosine similarity.
+</Note>
+
+## Methods
+
+### add_documents()
+
+Adds documents and their embeddings to the vector store.
+
+```python
+def add_documents(self, documents: List[Any], embeddings: numpy.ndarray) -> None
+```
+
+<ParamField path="documents" type="List[Any]" required>
+  List of document objects with `page_content` and `metadata` attributes. Typically LangChain `Document` objects.
+</ParamField>
+
+<ParamField path="embeddings" type="numpy.ndarray" required>
+  NumPy array of embeddings with shape `(len(documents), embedding_dimension)`. Must have the same length as the documents list.
+</ParamField>
+
+<Note>
+  The method automatically generates unique IDs for each document, extracts metadata, and converts NumPy embeddings to lists for ChromaDB compatibility. It also adds `doc_index` and `content_length` to each document's metadata.
+</Note>
+
+### _initialize_store()
+
+Internal method that sets up the ChromaDB client and collection.
+
+```python
+def _initialize_store(self) -> None
+```
+
+This method:
+- Creates the persist directory if it doesn't exist
+- Initializes a persistent ChromaDB client
+- Deletes any existing collection with the same name (for fresh indexing)
+- Creates a new collection with cosine similarity and metadata
+- Reports the collection status
+
+## Collection metadata
+
+Each collection is created with the following metadata:
+
+```python
+{
+    "hnsw:space": "cosine",           # Cosine similarity for semantic search
+    "repo": collection_name,           # Repository identifier
+    "type": "github_codebase",         # Collection type
+    "embedding_model": "all-MiniLM-L6-v2"  # Model used for embeddings
+}
+```
+
+## Document metadata
+
+Each stored document includes:
+
+<ResponseField name="Original metadata" type="dict">
+  All metadata from the source document (e.g., `path`, `source`, `branch`)
+</ResponseField>
+
+<ResponseField name="doc_index" type="int">
+  Sequential index of the document in the batch
+</ResponseField>
+
+<ResponseField name="content_length" type="int">
+  Character count of the document content
+</ResponseField>
+
+## Usage example
+
+```python
+from src.rag.vector_store import VectorStore
+from pathlib import Path
+
+# Initialize vector store
+persist_directory = Path.home() / ".RepoRAGX" / "vector_store"
+vector_store = VectorStore(
+    collection_name="facebook_react",
+    persist_directory=str(persist_directory)
+)
+
+# Add documents and embeddings
+vector_store.add_documents(chunks, embeddings)
+
+print(f"Total documents in collection: {vector_store.collection.count()}")
+```
+
+## Integration example
+
+From `main.py` showing the complete vector store setup:
+
+```python
+from pathlib import Path
+import os
+
+# Setup persist directory
+persist_directory = Path.home() / ".RepoRAGX" / "vector_store"
+os.makedirs(persist_directory, exist_ok=True)
+
+# Initialize vector store with repository name
+vector_store = VectorStore(
+    collection_name=repo.replace("/", "_"),  # e.g., "facebook_react"
+    persist_directory=persist_directory
+)
+
+# Generate and store embeddings
+texts = [doc.page_content for doc in chunks]
+embeddings = embedding_manager.generate_embeddings(texts)
+vector_store.add_documents(chunks, embeddings)
+```
+
+## Querying the collection
+
+The collection can be queried directly using ChromaDB's API:
+
+```python
+# Query for similar documents
+results = vector_store.collection.query(
+    query_embeddings=[query_embedding.tolist()],
+    n_results=5
+)
+
+# Access results
+documents = results['documents'][0]
+metadatas = results['metadatas'][0]
+distances = results['distances'][0]
+ids = results['ids'][0]
+```
+
+## Collection management
+
+<CodeGroup>
+```python Check document count
+count = vector_store.collection.count()
+print(f"Documents in collection: {count}")
+```
+
+```python Get collection metadata
+metadata = vector_store.collection.metadata
+print(f"Collection info: {metadata}")
+```
+
+```python Delete collection
+vector_store.client.delete_collection(
+    name=vector_store.collection_name
+)
+```
+</CodeGroup>
+
+## Document ID format
+
+Documents are assigned unique IDs in the format:
+
+```python
+f"doc_{uuid.uuid4().hex[:8]}_{i}"
+# Example: "doc_a3f2b9c1_0", "doc_7e4d8a2f_1"
+```
+
+This ensures uniqueness even when adding documents in multiple batches.
+
+## Persistence and reuse
+
+```python
+# First run: Create and populate collection
+vector_store = VectorStore(
+    collection_name="my_repo",
+    persist_directory="./vector_db"
+)
+vector_store.add_documents(chunks, embeddings)
+
+# Later: Reuse existing collection
+# Note: Current implementation always creates fresh collection
+# Modify _initialize_store() to skip deletion for reuse
+```
+
+## Error handling
+
+```python
+try:
+    vector_store.add_documents(documents, embeddings)
+except ValueError as e:
+    if "must match" in str(e):
+        print("Document and embedding counts don't match")
+except Exception as e:
+    print(f"Error adding documents: {e}")
+```
+
+## Implementation notes
+
+- Uses ChromaDB's `PersistentClient` for disk-based storage
+- Collections are recreated on each initialization (deletes existing collection)
+- Uses HNSW (Hierarchical Navigable Small World) index with cosine similarity
+- Embeddings are converted from NumPy arrays to Python lists for ChromaDB compatibility
+- All document content is stored alongside embeddings for retrieval
+- Thread-safe for concurrent reads (write operations should be serialized)

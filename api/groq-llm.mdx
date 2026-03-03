@@ -1,0 +1,294 @@
+---
+title: 'Groq LLM'
+description: 'Fast LLM inference with RAG context integration'
+---
+
+The `GroqLLM` class provides an interface to Groq's high-performance LLM API with built-in RAG (Retrieval-Augmented Generation) functionality. It retrieves relevant context from a vector store and generates informed responses.
+
+## Class definition
+
+```python
+class GroqLLM:
+    def __init__(self, model_name, temperature=0.1, max_tokens=1024)
+```
+
+## Constructor parameters
+
+<ParamField path="model_name" type="str" required>
+  Name of the Groq model to use. Examples:
+  - `"llama-3.3-70b-versatile"` (default in main.py)
+  - `"mixtral-8x7b-32768"`
+  - `"gemma-7b-it"`
+  
+  See [Groq's documentation](https://console.groq.com/docs/models) for available models.
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.1">
+  Controls randomness in generation (0.0 to 2.0).
+  - **0.0-0.3**: More deterministic, factual responses (recommended for code questions)
+  - **0.4-0.7**: Balanced creativity and consistency
+  - **0.8-2.0**: More creative, varied responses
+</ParamField>
+
+<ParamField path="max_tokens" type="int" default="1024">
+  Maximum number of tokens in the generated response. Limits response length.
+</ParamField>
+
+<Note>
+  Requires the `GROQ_API_KEY` environment variable to be set. The API key is automatically loaded from a `.env` file or can be set via `os.environ`.
+</Note>
+
+## Methods
+
+### rag()
+
+Performs Retrieval-Augmented Generation: retrieves relevant context and generates an answer.
+
+```python
+def rag(self, query: str, retriever: RAGRetriever, top_k: int = 5) -> str
+```
+
+<ParamField path="query" type="str" required>
+  The user's question or prompt to answer.
+</ParamField>
+
+<ParamField path="retriever" type="RAGRetriever" required>
+  An initialized `RAGRetriever` instance for retrieving relevant documents from the vector store.
+</ParamField>
+
+<ParamField path="top_k" type="int" default="5">
+  Number of relevant documents to retrieve and include as context.
+</ParamField>
+
+<ParamField path="returns" type="str">
+  The LLM's generated response based on the retrieved context. Returns a fallback message if no relevant context is found.
+</ParamField>
+
+## Usage example
+
+```python
+from src.rag.groq_llm import GroqLLM
+import os
+
+# Set API key
+os.environ["GROQ_API_KEY"] = "gsk_your_api_key_here"
+
+# Initialize LLM
+llm = GroqLLM(
+    model_name="llama-3.3-70b-versatile",
+    temperature=0.1,
+    max_tokens=1024
+)
+
+# Generate answer with RAG
+query = "How does authentication work in this codebase?"
+answer = llm.rag(
+    query=query,
+    retriever=rag_retriever,
+    top_k=5
+)
+
+print(answer)
+```
+
+## Integration example
+
+From `main.py` showing the complete RAG setup:
+
+```python
+import os
+import getpass
+from src.rag.groq_llm import GroqLLM
+
+# Get API key from user
+groq_key = getpass.getpass("Groq API Key: ").strip()
+os.environ["GROQ_API_KEY"] = groq_key
+
+# Get model selection
+model_name = input(
+    "Model Name (default: llama-3.3-70b-versatile): "
+).strip() or "llama-3.3-70b-versatile"
+
+# Initialize LLM
+llm = GroqLLM(model_name=model_name)
+
+# Interactive query loop
+while True:
+    query = input("\nAsk anything ('exit' to quit): ")
+    if query.strip().lower() == "exit":
+        break
+    answer = llm.rag(query=query, retriever=rag_retriever)
+    print(answer)
+```
+
+## Prompt structure
+
+The RAG method uses the following prompt template:
+
+```python
+prompt = f"""
+Use the following context to answer the question concisely.
+
+Context:
+{context}
+
+Question: {query}
+
+Answer:
+"""
+```
+
+Where `context` is formatted as:
+
+```
+--- File: path/to/file1.py ---
+[file content]
+
+--- File: path/to/file2.py ---
+[file content]
+```
+
+## Customizing generation parameters
+
+<CodeGroup>
+```python More creative responses
+llm = GroqLLM(
+    model_name="llama-3.3-70b-versatile",
+    temperature=0.7,  # More creative
+    max_tokens=2048   # Longer responses
+)
+```
+
+```python Faster model
+llm = GroqLLM(
+    model_name="mixtral-8x7b-32768",
+    temperature=0.1,
+    max_tokens=512
+)
+```
+
+```python Deterministic answers
+llm = GroqLLM(
+    model_name="llama-3.3-70b-versatile",
+    temperature=0.0,  # Fully deterministic
+    max_tokens=1024
+)
+```
+</CodeGroup>
+
+## Context formatting
+
+The retrieved documents are formatted with file paths for clarity:
+
+```python
+context_parts = []
+for doc in results:
+    meta = doc.get("metadata", {})
+    header = f"File: {meta.get('path', 'unknown')}"
+    context_parts.append(f"--- {header} ---\n{doc['content']}")
+
+context = "\n\n".join(context_parts)
+```
+
+This helps the LLM understand which file each code snippet comes from.
+
+## Handling no results
+
+```python
+if not results:
+    return "No relevant context found to answer the question."
+```
+
+The method returns a user-friendly message when the retriever finds no relevant documents.
+
+## Error handling
+
+```python
+try:
+    llm = GroqLLM(model_name="llama-3.3-70b-versatile")
+except ValueError as e:
+    if "GROQ_API_KEY" in str(e):
+        print("Please set GROQ_API_KEY environment variable")
+        # Prompt user for key or exit
+except Exception as e:
+    print(f"Error initializing LLM: {e}")
+```
+
+## Supported Groq models
+
+<Accordion title="Popular Groq models">
+  - **llama-3.3-70b-versatile**: Balanced performance and quality (recommended)
+  - **llama-3.1-70b-versatile**: Previous generation Llama 3.1
+  - **mixtral-8x7b-32768**: Mixture of Experts, large context window
+  - **gemma-7b-it**: Efficient smaller model
+  - **llama-3.1-8b-instant**: Very fast, smaller model
+  
+  Check [Groq's model documentation](https://console.groq.com/docs/models) for the latest models and capabilities.
+</Accordion>
+
+## API key management
+
+<CodeGroup>
+```python From environment
+import os
+
+# Set in code
+os.environ["GROQ_API_KEY"] = "gsk_..."
+
+llm = GroqLLM(model_name="llama-3.3-70b-versatile")
+```
+
+```python From .env file
+# Create .env file:
+# GROQ_API_KEY=gsk_...
+
+from dotenv import load_dotenv
+load_dotenv()
+
+llm = GroqLLM(model_name="llama-3.3-70b-versatile")
+```
+
+```python Interactive prompt
+import getpass
+import os
+
+api_key = getpass.getpass("Groq API Key: ")
+os.environ["GROQ_API_KEY"] = api_key
+
+llm = GroqLLM(model_name="llama-3.3-70b-versatile")
+```
+</CodeGroup>
+
+## Response processing
+
+```python
+# The response is a string that can be processed further
+answer = llm.rag(query=query, retriever=retriever)
+
+# Format for display
+print("\n" + "="*50)
+print("Answer:")
+print("="*50)
+print(answer)
+print("="*50)
+
+# Extract code blocks (if needed)
+import re
+code_blocks = re.findall(r'```.*?\n(.*?)```', answer, re.DOTALL)
+```
+
+## Performance considerations
+
+- Groq provides very fast inference (often < 1 second for responses)
+- Larger `top_k` values increase context size and may slow generation
+- Context length is limited by model's max tokens (varies by model)
+- Consider `max_tokens` parameter to control response length and cost
+
+## Implementation notes
+
+- Uses LangChain's `ChatGroq` wrapper for API interactions
+- API key is validated during initialization (raises `ValueError` if missing)
+- Temperature defaults to 0.1 for more deterministic, factual code responses
+- The `rag()` method handles the full RAG pipeline: retrieval → formatting → generation
+- Responses are extracted from the LLM's completion via `.content` attribute
+- No conversation history is maintained (each query is independent)

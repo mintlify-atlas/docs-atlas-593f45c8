@@ -1,0 +1,256 @@
+---
+title: Environment setup
+description: Set up Python 3.12 and configure your development environment for RepoRAGX
+---
+
+RepoRAGX requires Python 3.12 and several dependencies for RAG functionality, including LangChain, ChromaDB, and Sentence Transformers.
+
+## Python version requirement
+
+<Warning>
+RepoRAGX requires **Python 3.12** specifically. Using other Python versions may cause compatibility issues with dependencies.
+</Warning>
+
+Verify your Python version:
+
+```bash
+python --version
+# Should output: Python 3.12.x
+```
+
+## Environment manager options
+
+You can use either Conda (recommended) or Python's built-in venv for environment management.
+
+### Using Conda (recommended)
+
+Conda provides better dependency isolation and is the officially recommended approach.
+
+<Steps>
+  <Step title="Install Conda">
+    If you don't have Conda, install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) or [Anaconda](https://www.anaconda.com/download)
+  </Step>
+  
+  <Step title="Create environment">
+    Create a new Conda environment with Python 3.12:
+    ```bash
+    conda create -p venv python==3.12
+    ```
+    
+    This creates a local `venv/` directory in your project folder.
+  </Step>
+  
+  <Step title="Activate environment">
+    Activate the environment:
+    ```bash
+    conda activate venv/
+    ```
+    
+    Your terminal prompt should change to show `(venv)` at the beginning.
+  </Step>
+</Steps>
+
+<Tip>
+Using `-p venv` creates the environment in your project directory, making it easy to manage project-specific dependencies.
+</Tip>
+
+### Using venv (alternative)
+
+If you prefer Python's built-in virtual environment manager:
+
+<Steps>
+  <Step title="Ensure Python 3.12">
+    Confirm you have Python 3.12 installed:
+    ```bash
+    python3.12 --version
+    ```
+  </Step>
+  
+  <Step title="Create virtual environment">
+    Create a new virtual environment:
+    ```bash
+    python3.12 -m venv venv
+    ```
+  </Step>
+  
+  <Step title="Activate environment">
+    Activate based on your operating system:
+    
+    **Linux/macOS:**
+    ```bash
+    source venv/bin/activate
+    ```
+    
+    **Windows (Command Prompt):**
+    ```cmd
+    venv\Scripts\activate.bat
+    ```
+    
+    **Windows (PowerShell):**
+    ```powershell
+    venv\Scripts\Activate.ps1
+    ```
+  </Step>
+</Steps>
+
+## Installing dependencies
+
+After activating your environment, install all required packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Core dependencies
+
+RepoRAGX uses the following major dependencies (from requirements.txt):
+
+| Package | Version | Purpose |
+|---------|---------|----------|
+| `langchain` | 1.2.10 | Core RAG framework and orchestration |
+| `langchain-community` | 0.4.1 | GitHub file loader and community integrations |
+| `langchain-core` | 1.2.14 | LangChain core abstractions |
+| `langchain_groq` | 1.1.2 | Groq LLM integration |
+| `sentence-transformers` | 5.2.3 | Text embeddings using `all-MiniLM-L6-v2` |
+| `chromadb` | 1.5.1 | Vector database for storing embeddings |
+| `python-dotenv` | 1.2.1 | Environment variable management |
+
+<Note>
+The first run may take several minutes as Sentence Transformers downloads the `all-MiniLM-L6-v2` model (~80MB).
+</Note>
+
+## Environment variables
+
+RepoRAGX uses environment variables for configuration. The application automatically loads these from a `.env` file using `python-dotenv` (src/main.py:11).
+
+### Required variables
+
+Create a `.env` file in the project root:
+
+```bash
+GITHUB_PERSONAL_ACCESS_TOKEN=your_github_token
+GROQ_API_KEY=your_groq_key
+```
+
+See the [API keys](/configuration/api-keys) page for details on obtaining these credentials.
+
+### Using .env.example
+
+The repository includes a `.env.example` template:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your actual credentials.
+
+<Warning>
+Never commit your `.env` file to version control. Ensure `.env` is listed in `.gitignore`.
+</Warning>
+
+## Vector store persistence
+
+RepoRAGX stores vector embeddings in a persistent ChromaDB database to avoid re-indexing repositories on each run.
+
+### Storage location
+
+Embeddings are stored in:
+
+```
+~/.RepoRAGX/vector_store/
+```
+
+The application creates this directory automatically (src/main.py:34-35):
+
+```python
+persist_directory = Path.home()/".RepoRAGX"/"vector_store"
+os.makedirs(persist_directory, exist_ok=True)
+```
+
+### Collection naming
+
+Each repository gets a unique collection name based on the repo identifier:
+
+```python
+collection_name = repo.replace("/", "_")
+# Example: "AnmolTutejaGitHub/RepoRAGX" → "AnmolTutejaGitHub_RepoRAGX"
+```
+
+<Tip>
+To re-index a repository, delete its collection folder from `~/.RepoRAGX/vector_store/` and run the application again.
+</Tip>
+
+## Verifying your setup
+
+Test your environment configuration:
+
+<Steps>
+  <Step title="Activate environment">
+    Ensure your virtual environment is activated
+  </Step>
+  
+  <Step title="Run the application">
+    ```bash
+    python -m src.main
+    ```
+  </Step>
+  
+  <Step title="Check output">
+    You should see the RepoRAGX ASCII banner and prompts for API keys:
+    ```
+    /**
+     *    __________                    __________    _____    ____________  ___
+     *    \______   \ ____ ______   ____\______   \  /  _  \  /  _____/\   \/  /
+     *     |       _// __ \\____ \ /  _ \|       _/ /  /_\  \/   \  ___ \     / 
+     *     |    |   \  ___/|  |_> >  <_> )    |   \/    |    \    \_\  \/     \ 
+     *     |____|_  /\___  >   __/ \____/|____|_  /\____|__  /\______  /___/\  \
+     *            \/     \/|__|                 \/         \/        \/      \_/
+     */
+    
+    Chat with your github repository
+    ```
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Import errors
+
+If you encounter import errors:
+
+```bash
+# Verify all packages are installed
+pip list | grep -E "langchain|chromadb|sentence-transformers"
+
+# Reinstall dependencies
+pip install -r requirements.txt --force-reinstall
+```
+
+### Python version mismatch
+
+If you're using the wrong Python version:
+
+```bash
+# Check which Python is active
+which python
+python --version
+
+# Recreate environment with correct version
+conda deactivate
+conda remove -p venv --all
+conda create -p venv python==3.12
+conda activate venv/
+```
+
+### ChromaDB errors
+
+If ChromaDB fails to initialize:
+
+```bash
+# Clear the vector store
+rm -rf ~/.RepoRAGX/vector_store/
+
+# Reinstall ChromaDB
+pip uninstall chromadb
+pip install chromadb==1.5.1
+```

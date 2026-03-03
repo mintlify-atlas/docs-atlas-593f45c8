@@ -1,0 +1,189 @@
+---
+title: 'Text splitter'
+description: 'Split documents into chunks with language-aware parsing'
+---
+
+The `TextSplitter` class intelligently splits documents into smaller chunks while respecting programming language syntax. It uses language-specific parsers when available and falls back to generic text splitting for unknown file types.
+
+## Class definition
+
+```python
+class TextSplitter:
+    def __init__(self, documents, chunk_size=1000, chunk_overlap=200)
+```
+
+## Constructor parameters
+
+<ParamField path="documents" type="List[Document]" required>
+  List of LangChain `Document` objects to split into chunks
+</ParamField>
+
+<ParamField path="chunk_size" type="int" default="1000">
+  Maximum size of each text chunk in characters
+</ParamField>
+
+<ParamField path="chunk_overlap" type="int" default="200">
+  Number of characters to overlap between consecutive chunks, which helps maintain context across chunk boundaries
+</ParamField>
+
+## Methods
+
+### split_documents_into_chunks()
+
+Splits all documents into chunks using language-aware or generic splitting.
+
+```python
+def split_documents_into_chunks(self) -> List[Document]
+```
+
+<ParamField path="returns" type="List[Document]">
+  List of chunk `Document` objects with preserved metadata from the original documents
+</ParamField>
+
+<Note>
+  The method automatically detects file extensions from document metadata and applies the appropriate language-specific splitter. For files without recognized extensions, it falls back to generic recursive character splitting.
+</Note>
+
+### _get_splitter()
+
+Internal method that determines the appropriate splitter for a document.
+
+```python
+def _get_splitter(self, doc) -> RecursiveCharacterTextSplitter
+```
+
+<ParamField path="doc" type="Document" required>
+  Document to create a splitter for
+</ParamField>
+
+<ParamField path="returns" type="RecursiveCharacterTextSplitter">
+  Language-specific or generic text splitter configured with the instance's chunk size and overlap settings
+</ParamField>
+
+## Supported languages
+
+The splitter recognizes and handles syntax for 30+ programming languages and file formats:
+
+<Accordion title="EXTENSION_TO_LANGUAGE mapping">
+  ```python
+  EXTENSION_TO_LANGUAGE = {
+      # Systems
+      ".cpp": Language.CPP,
+      ".cc": Language.CPP,
+      ".cxx": Language.CPP,
+      ".c": Language.C,
+      ".h": Language.C,
+      # JVM
+      ".java": Language.JAVA,
+      ".kt": Language.KOTLIN,
+      ".scala": Language.SCALA,
+      # Web
+      ".js": Language.JS,
+      ".jsx": Language.JS,
+      ".ts": Language.TS,
+      ".tsx": Language.TS,
+      ".php": Language.PHP,
+      ".html": Language.HTML,
+      # Scripting
+      ".py": Language.PYTHON,
+      ".lua": Language.LUA,
+      ".pl": Language.PERL,
+      ".pm": Language.PERL,
+      ".r": Language.R,
+      # Systems/Low level
+      ".rs": Language.RUST,
+      ".swift": Language.SWIFT,
+      ".go": Language.GO,
+      # Functional
+      ".hs": Language.HASKELL,
+      ".ex": Language.ELIXIR,
+      ".exs": Language.ELIXIR,
+      # Docs/Config
+      ".md": Language.MARKDOWN,
+      ".rst": Language.RST,
+      ".tex": Language.LATEX,
+      # Other
+      ".proto": Language.PROTO,
+      ".sol": Language.SOL,
+      ".cs": Language.CSHARP,
+      ".cob": Language.COBOL,
+      ".cbl": Language.COBOL,
+      ".ps1": Language.POWERSHELL,
+      ".psm1": Language.POWERSHELL,
+      ".vb": Language.VISUALBASIC6,
+      ".bas": Language.VISUALBASIC6,
+  }
+  ```
+</Accordion>
+
+## Generic splitting fallback
+
+For files without recognized extensions, the splitter uses:
+
+```python
+RecursiveCharacterTextSplitter(
+    chunk_size=self.chunk_size,
+    chunk_overlap=self.chunk_overlap,
+    length_function=len,
+    separators=["\n\n", "\n", " ", ""]
+)
+```
+
+This progressively attempts to split on paragraph breaks, line breaks, spaces, and finally individual characters.
+
+## Usage example
+
+```python
+from src.rag.text_splitter import TextSplitter
+
+# Assume 'docs' is a list of Document objects from GitHubCodeBaseLoader
+splitter = TextSplitter(
+    documents=docs,
+    chunk_size=1000,
+    chunk_overlap=200
+)
+
+chunks = splitter.split_documents_into_chunks()
+
+print(f"Split {len(docs)} documents into {len(chunks)} chunks")
+```
+
+## Custom chunk sizes
+
+```python
+# Larger chunks for more context (e.g., for embeddings with larger context windows)
+splitter = TextSplitter(
+    documents=docs,
+    chunk_size=2000,
+    chunk_overlap=400
+)
+
+# Smaller chunks for more granular retrieval
+splitter = TextSplitter(
+    documents=docs,
+    chunk_size=500,
+    chunk_overlap=100
+)
+```
+
+## Integration example
+
+From `main.py` showing text splitting in the RAG pipeline:
+
+```python
+# Load and split documents
+docs = GitHubCodeBaseLoader(repo=repo, branch=branch, access_token=github_token).load()
+chunks = TextSplitter(docs).split_documents_into_chunks()
+
+# Generate embeddings for chunks
+texts = [doc.page_content for doc in chunks]
+embeddings = embedding_manager.generate_embeddings(texts)
+```
+
+## Implementation notes
+
+- Uses LangChain's `RecursiveCharacterTextSplitter` with language-specific parsers
+- Language-aware splitting respects syntax boundaries (functions, classes, statements)
+- Chunk overlap helps maintain context for retrieval across chunk boundaries
+- File extension detection uses the `path` field from document metadata
+- All chunks inherit metadata from their parent documents

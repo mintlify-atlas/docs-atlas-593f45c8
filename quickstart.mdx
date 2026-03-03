@@ -1,80 +1,435 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Get up and running with RepoRAGX in 5 minutes
 ---
 
-## Get started in three steps
+# Quick start
 
-Get your documentation site running locally and make your first customization.
+This guide will walk you through setting up API keys, loading your first repository, and asking questions.
 
-### Step 1: Set up your local environment
+<Note>
+  **Before you begin**: Make sure you've completed the [installation](/installation) steps.
+</Note>
+
+## Step 1: Get your API keys
+
+RepoRAGX requires two API keys to function:
+
+<Steps>
+  <Step title="GitHub personal access token">
+    1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
+    2. Click "Generate new token" → "Generate new token (classic)"
+    3. Give it a descriptive name like "RepoRAGX"
+    4. Select the `repo` scope (or just `public_repo` if you only need public repositories)
+    5. Click "Generate token" and copy the token immediately
+    
+    <Warning>
+      GitHub only shows the token once. Save it in a secure location.
+    </Warning>
+  </Step>
+  
+  <Step title="Groq API key">
+    1. Go to [console.groq.com](https://console.groq.com)
+    2. Sign up for a free account (no credit card required)
+    3. Navigate to [console.groq.com/keys](https://console.groq.com/keys)
+    4. Click "Create API Key"
+    5. Give it a name and copy the API key
+    
+    <Tip>
+      Groq's free tier includes generous rate limits for the `llama-3.3-70b-versatile` model.
+    </Tip>
+  </Step>
+</Steps>
+
+## Step 2: Run RepoRAGX
+
+With your virtual environment activated, start RepoRAGX:
+
+```bash
+python -m src.main
+```
+
+You'll see the RepoRAGX banner and be prompted for credentials:
+
+```
+/**
+ *    __________                    __________    _____    ____________  ___
+ *    \______   \ ____ ______   ____\______   \  /  _  \  /  _____/\   \/  /
+ *     |       _// __ \\____ \ /  _ \|       _/ /  /_\  \/   \  ___ \     / 
+ *     |    |   \  ___/|  |_> >  <_> )    |   \/    |    \    \_\  \/     \ 
+ *     |____|_  /\___  >   __/ \____/|____|_  /\____|__  /\______  /___/\  \
+ *            \/     \/|__|                 \/         \/        \/      \_/
+ */
+
+Chat with your github repository
+
+GitHub Personal Access Token: 
+```
+
+## Step 3: Configure your session
+
+Enter your credentials and repository details when prompted:
+
+<CodeGroup>
+```bash Example session
+GitHub Personal Access Token: ghp_xxxxxxxxxxxxxxxxxxxx
+Groq API Key: gsk_xxxxxxxxxxxxxxxxxxxx
+Model Name (default: llama-3.3-70b-versatile): [press Enter]
+Repo (owner/repo): AnmolTutejaGitHub/RepoRAGX
+Branch (default: main): main
+```
+</CodeGroup>
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+  <Accordion title="Model selection">
+    You can use any model supported by Groq. Popular options:
+    - `llama-3.3-70b-versatile` (default, best quality)
+    - `llama-3.1-70b-versatile` (alternative)
+    - `mixtral-8x7b-32768` (faster, good for smaller queries)
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+    See the full list at [console.groq.com/docs/models](https://console.groq.com/docs/models).
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+  
+  <Accordion title="Repository format">
+    Use the format `owner/repo`:
+    - ✅ `facebook/react`
+    - ✅ `microsoft/vscode`
+    - ✅ `AnmolTutejaGitHub/RepoRAGX`
+    - ❌ `https://github.com/facebook/react` (don't include the full URL)
+  </Accordion>
+  
+  <Accordion title="Branch selection">
+    The default branch is `main`. You can specify any branch name:
+    - `main`
+    - `master`
+    - `develop`
+    - `feature/new-auth`
   </Accordion>
 </AccordionGroup>
 
-### Step 2: Deploy your changes
+## Step 4: Loading the repository
+
+RepoRAGX will now fetch and process the repository:
+
+```
+Initilizing github loader.....
+Fetching files from github....
+Loaded 42 files from github!
+Splitting documents into chunks...
+chunking completed
+handling document embedding generation using sentence transformer...
+Loading embedding model: all-MiniLM-L6-v2
+Model loaded successfully. Embedding dimension: 384
+Generating embeddings for 187 texts...
+Batches: 100%|████████████████████| 6/6 [00:03<00:00,  1.89it/s]
+Generated embeddings with shape: (187, 384)
+Initilizing vector database....
+Vector store initialized. Collection: AnmolTutejaGitHub_RepoRAGX
+Existing documents in collection: 0
+Adding 187 documents to vector store...
+Successfully added 187 documents to vector store
+Total documents in collection: 187
+Initilizing RAG Retriver pipeline
+Initializing Groq LLM...
+```
+
+<Note>
+  **First run**: The embedding model (`all-MiniLM-L6-v2`) will be downloaded automatically (~90MB). This only happens once.
+</Note>
+
+### What's happening behind the scenes
+
+<Steps>
+  <Step title="File loading">
+    `GitHubCodeBaseLoader` fetches all files from the repository, filtering out:
+    - Binary files (`.png`, `.jpg`, `.exe`, etc.)
+    - Dependencies (`node_modules/`, `venv/`, `.git/`)
+    - Generated files (`.pyc`, `.class`, `.min.js`)
+    
+    See the full exclusion list in `src/rag/github_codebase_loader.py:3-24`
+  </Step>
+  
+  <Step title="Text chunking">
+    `TextSplitter` uses language-aware splitting with `RecursiveCharacterTextSplitter`:
+    - Chunk size: 1000 characters
+    - Chunk overlap: 200 characters
+    - Supports 25+ languages (Python, JavaScript, Java, Go, Rust, etc.)
+    
+    Language detection happens automatically based on file extension. See `src/rag/text_splitter.py:3-50`
+  </Step>
+  
+  <Step title="Embedding generation">
+    `EmbeddingManager` generates 384-dimensional vectors using Sentence Transformers:
+    ```python
+    # From src/rag/embedding_manager.py:5
+    model_name = "all-MiniLM-L6-v2"
+    ```
+    Each code chunk is converted to a vector for similarity search.
+  </Step>
+  
+  <Step title="Vector storage">
+    `VectorStore` persists embeddings in ChromaDB:
+    - Location: `~/.RepoRAGX/vector_store/`
+    - Distance metric: Cosine similarity
+    - Collection name: `owner_repo` (e.g., `facebook_react`)
+    
+    See `src/rag/vector_store.py:13-40`
+  </Step>
+</Steps>
+
+## Step 5: Ask questions
+
+Once loading is complete, you can start asking questions:
+
+```
+Ask anything ('exit' to quit): How does the text splitter work?
+```
+
+RepoRAGX will:
+1. Convert your query to a vector embedding
+2. Search ChromaDB for the top 5 most similar code chunks
+3. Send the retrieved context to Groq's LLM
+4. Return a context-aware answer
+
+### Example queries
+
+<CodeGroup>
+```bash Architecture questions
+Ask anything ('exit' to quit): What is the project structure?
+Ask anything ('exit' to quit): How does the RAG pipeline work?
+Ask anything ('exit' to quit): What libraries are used for embeddings?
+```
+
+```bash Implementation questions
+Ask anything ('exit' to quit): Where is the GitHub loader implemented?
+Ask anything ('exit' to quit): How are embeddings generated?
+Ask anything ('exit' to quit): What file extensions are excluded?
+```
+
+```bash Debugging questions
+Ask anything ('exit' to quit): Where are errors handled in the vector store?
+Ask anything ('exit' to quit): How does the retriever filter results?
+Ask anything ('exit' to quit): What happens if the Groq API key is missing?
+```
+</CodeGroup>
+
+### Sample output
+
+```
+Ask anything ('exit' to quit): How are embeddings generated?
+
+Running RAG for query: How are embeddings generated?
+Retrieving documents for query: 'How are embeddings generated?'
+Top K: 5, Score threshold: 0.0
+Generating embeddings for 1 texts...
+Retrieved 5 documents (after filtering)
+
+Embeddings are generated using the Sentence Transformers library with the 
+all-MiniLM-L6-v2 model. The EmbeddingManager class in src/rag/embedding_manager.py 
+handles this process:
+
+1. The model is loaded in the _load_model() method (line 11)
+2. The generate_embeddings() method takes a list of texts
+3. It uses model.encode() to convert texts to 384-dimensional vectors
+4. Progress is shown with a progress bar via show_progress_bar=True
+5. The method returns a numpy array of shape (num_texts, 384)
+
+The same model is used for both document embeddings and query embeddings to ensure 
+compatibility during similarity search.
+
+Ask anything ('exit' to quit): exit
+```
+
+## Understanding retrieval
+
+When you ask a question, RepoRAGX performs similarity search:
+
+<CodeGroup>
+```python Retrieval process (src/rag/rag_retriever.py:7-47)
+def retrieve(self, query, top_k=5, score_threshold=0.0):
+    # 1. Convert query to embedding
+    query_embedding = self.embedding_manager.generate_embeddings([query])[0]
+    
+    # 2. Query ChromaDB
+    results = self.vector_store.collection.query(
+        query_embeddings=[query_embedding.tolist()],
+        n_results=top_k
+    )
+    
+    # 3. Calculate similarity scores
+    for i, (doc_id, document, metadata, distance) in enumerate(...):
+        similarity_score = 1 - distance  # Convert distance to similarity
+        
+        if similarity_score >= score_threshold:
+            retrieved_docs.append({
+                'content': document,
+                'metadata': metadata,
+                'similarity_score': similarity_score,
+                'rank': i + 1
+            })
+    
+    return retrieved_docs
+```
+
+```python LLM generation (src/rag/groq_llm.py:28-56)
+def rag(self, query, retriever, top_k=5):
+    # 1. Retrieve relevant code chunks
+    results = retriever.retrieve(query, top_k=top_k)
+    
+    # 2. Format context with file paths
+    context_parts = []
+    for doc in results:
+        meta = doc.get("metadata", {})
+        header = f"File: {meta.get('path', 'unknown')}"
+        context_parts.append(f"--- {header} ---\n{doc['content']}")
+    
+    context = "\n\n".join(context_parts)
+    
+    # 3. Create prompt
+    prompt = f"""
+        Use the following context to answer the question concisely.
+        
+        Context:
+        {context}
+        
+        Question: {query}
+        
+        Answer:
+    """
+    
+    # 4. Generate response
+    response = self.llm.invoke(prompt)
+    return response.content
+```
+</CodeGroup>
+
+<Tip>
+  **Pro tip**: The more specific your question, the better the results. Instead of "How does this work?", try "How does the EmbeddingManager generate vector embeddings?"
+</Tip>
+
+## Advanced configuration
+
+### Adjusting retrieval parameters
+
+You can modify retrieval settings in `src/rag/rag_retriever.py:7`:
+
+```python
+def retrieve(self, query, top_k=5, score_threshold=0.0):
+```
+
+- `top_k`: Number of chunks to retrieve (default: 5)
+- `score_threshold`: Minimum similarity score (0.0 = no filtering)
+
+### Changing chunk size
+
+Modify text splitting in `src/rag/text_splitter.py:53`:
+
+```python
+def __init__(self, documents, chunk_size=1000, chunk_overlap=200):
+```
+
+- `chunk_size`: Maximum characters per chunk
+- `chunk_overlap`: Overlapping characters between chunks
+
+### Using different models
+
+Groq supports multiple models. Try these alternatives:
+
+```bash
+Model Name (default: llama-3.3-70b-versatile): mixtral-8x7b-32768
+```
+
+See `src/rag/groq_llm.py:9-26` for LLM configuration.
+
+## Persistent storage
+
+RepoRAGX stores vector embeddings locally:
+
+```bash
+# View stored repositories
+ls ~/.RepoRAGX/vector_store/
+
+# Each repository gets its own ChromaDB collection
+# Named as: owner_repo (e.g., facebook_react)
+```
+
+<Warning>
+  Vector stores are **recreated each time** you load a repository. If you want persistent storage, comment out lines 19-23 in `src/rag/vector_store.py`:
+  
+  ```python
+  # try:
+  #     self.client.delete_collection(name=self.collection_name)
+  #     print(f"Deleted existing collection: {self.collection_name}")
+  # except Exception:
+  #     pass
+  ```
+</Warning>
+
+## Troubleshooting
 
 <AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+  <Accordion title="Authentication errors">
+    ```
+    Error: Bad credentials
+    ```
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
+    Your GitHub token is invalid or expired. Generate a new one at [github.com/settings/tokens](https://github.com/settings/tokens).
+  </Accordion>
+  
+  <Accordion title="Rate limit errors">
+    ```
+    Error: API rate limit exceeded
+    ```
+    
+    **GitHub**: Wait for the rate limit to reset, or use a token with higher limits.
+    **Groq**: Free tier has rate limits. Wait a moment between queries.
+  </Accordion>
+  
+  <Accordion title="No documents found">
+    ```
+    No relevant context found to answer the question.
+    ```
+    
+    Try:
+    1. Rephrasing your question to be more specific
+    2. Using keywords that appear in the codebase
+    3. Lowering `score_threshold` in `src/rag/rag_retriever.py:7`
+  </Accordion>
+  
+  <Accordion title="Model download fails">
+    ```
+    Error loading model all-MiniLM-L6-v2
+    ```
+    
+    Check your internet connection. The model downloads from Hugging Face (~90MB). If it continues to fail, try:
+    
+    ```bash
+    pip install --upgrade sentence-transformers
+    ```
   </Accordion>
 </AccordionGroup>
 
-### Step 3: Go live
+## Exit the session
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+To exit RepoRAGX, type `exit` at the prompt:
+
+```
+Ask anything ('exit' to quit): exit
+```
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="How it works" icon="diagram-project" href="/concepts/how-it-works">
+    Deep dive into RepoRAGX's internals
+  </Card>
+  <Card title="API reference" icon="code" href="/api/github-loader">
+    Explore the Python API
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/api-keys">
+    Customize API keys and models
+  </Card>
+  <Card title="Examples" icon="book" href="/usage/examples">
+    See real-world usage examples
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

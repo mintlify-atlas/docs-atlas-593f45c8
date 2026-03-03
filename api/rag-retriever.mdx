@@ -1,0 +1,252 @@
+---
+title: 'RAG retriever'
+description: 'Retrieve relevant documents using semantic similarity search'
+---
+
+The `RAGRetriever` class implements semantic search over a vector store by converting queries into embeddings and retrieving the most similar documents. It supports configurable result counts and similarity score filtering.
+
+## Class definition
+
+```python
+class RAGRetriever:
+    def __init__(self, vector_store, embedding_manager)
+```
+
+## Constructor parameters
+
+<ParamField path="vector_store" type="VectorStore" required>
+  An initialized `VectorStore` instance containing the document embeddings to search against.
+</ParamField>
+
+<ParamField path="embedding_manager" type="EmbeddingManager" required>
+  An initialized `EmbeddingManager` instance used to convert query text into embeddings.
+</ParamField>
+
+## Methods
+
+### retrieve()
+
+Retrieves the most relevant documents for a given query.
+
+```python
+def retrieve(self, query: str, top_k: int = 5, score_threshold: float = 0.0) -> List[Dict]
+```
+
+<ParamField path="query" type="str" required>
+  The search query text to find relevant documents for.
+</ParamField>
+
+<ParamField path="top_k" type="int" default="5">
+  Maximum number of documents to retrieve. The actual number returned may be less if filtered by `score_threshold`.
+</ParamField>
+
+<ParamField path="score_threshold" type="float" default="0.0">
+  Minimum similarity score (0.0 to 1.0) for documents to be included in results. Documents with scores below this threshold are filtered out.
+</ParamField>
+
+<ParamField path="returns" type="List[Dict]">
+  List of dictionaries containing retrieved documents and their metadata. Returns an empty list if no documents are found or an error occurs.
+</ParamField>
+
+## Return value structure
+
+Each retrieved document is a dictionary with the following fields:
+
+<ResponseField name="id" type="str">
+  Unique identifier of the document in the vector store
+</ResponseField>
+
+<ResponseField name="content" type="str">
+  The full text content of the retrieved document
+</ResponseField>
+
+<ResponseField name="metadata" type="dict">
+  Document metadata including:
+  - `path`: File path in the repository
+  - `source`: GitHub URL of the file
+  - `doc_index`: Position in the original batch
+  - `content_length`: Character count
+  - Other fields from the original document
+</ResponseField>
+
+<ResponseField name="similarity_score" type="float">
+  Similarity score between 0.0 and 1.0, where 1.0 is most similar. Calculated as `1 - distance`.
+</ResponseField>
+
+<ResponseField name="distance" type="float">
+  Raw cosine distance from the query (lower is more similar)
+</ResponseField>
+
+<ResponseField name="rank" type="int">
+  Position in the results (1-indexed), indicating relevance ranking
+</ResponseField>
+
+## Usage example
+
+```python
+from src.rag.rag_retriever import RAGRetriever
+
+# Initialize retriever
+rag_retriever = RAGRetriever(
+    vector_store=vector_store,
+    embedding_manager=embedding_manager
+)
+
+# Retrieve relevant documents
+query = "How does authentication work?"
+results = rag_retriever.retrieve(query, top_k=5)
+
+# Process results
+for doc in results:
+    print(f"File: {doc['metadata']['path']}")
+    print(f"Similarity: {doc['similarity_score']:.3f}")
+    print(f"Content preview: {doc['content'][:100]}...\n")
+```
+
+## Filtering by similarity score
+
+```python
+# Only retrieve highly relevant documents
+results = rag_retriever.retrieve(
+    query="database connection",
+    top_k=10,
+    score_threshold=0.7  # Only documents with >70% similarity
+)
+
+print(f"Found {len(results)} highly relevant documents")
+```
+
+## Integration example
+
+From `main.py` showing retrieval in the interactive chat loop:
+
+```python
+# Initialize RAG retriever
+rag_retriever = RAGRetriever(
+    vector_store=vector_store,
+    embedding_manager=embedding_manager
+)
+
+# Initialize LLM
+llm = GroqLLM(model_name=model_name)
+
+# Interactive query loop
+while True:
+    query = input("\nAsk anything ('exit' to quit): ")
+    if query.strip().lower() == "exit":
+        break
+    
+    # Use retriever to get context and generate answer
+    answer = llm.rag(query=query, retriever=rag_retriever)
+    print(answer)
+```
+
+## Adjusting retrieval parameters
+
+<CodeGroup>
+```python Default retrieval
+# Get top 5 documents, no filtering
+results = rag_retriever.retrieve(query)
+```
+
+```python More context
+# Retrieve more documents for broader context
+results = rag_retriever.retrieve(
+    query,
+    top_k=10
+)
+```
+
+```python High precision
+# Fewer, more relevant results
+results = rag_retriever.retrieve(
+    query,
+    top_k=3,
+    score_threshold=0.8
+)
+```
+</CodeGroup>
+
+## Working with results
+
+```python
+results = rag_retriever.retrieve("error handling", top_k=5)
+
+if not results:
+    print("No relevant documents found")
+else:
+    # Sort by similarity (highest first)
+    sorted_results = sorted(
+        results,
+        key=lambda x: x['similarity_score'],
+        reverse=True
+    )
+    
+    # Group by file
+    from collections import defaultdict
+    by_file = defaultdict(list)
+    for doc in results:
+        file_path = doc['metadata']['path']
+        by_file[file_path].append(doc)
+    
+    print(f"Found relevant content in {len(by_file)} files")
+```
+
+## Query embeddings
+
+The retriever generates embeddings for queries using the same model used for document embeddings:
+
+```python
+# Inside retrieve() method:
+query_embedding = self.embedding_manager.generate_embeddings([query])[0]
+```
+
+This ensures queries and documents are embedded in the same vector space for accurate similarity comparisons.
+
+## Error handling
+
+```python
+try:
+    results = rag_retriever.retrieve(query)
+    if not results:
+        print("No documents matched your query")
+    else:
+        print(f"Retrieved {len(results)} documents")
+except Exception as e:
+    print(f"Retrieval error: {e}")
+    results = []  # Fallback to empty results
+```
+
+## Understanding similarity scores
+
+<Note>
+  Similarity scores are calculated as `1 - cosine_distance`, where:
+  - **1.0** = Identical or near-identical content
+  - **0.7-0.9** = Highly relevant, likely contains answer
+  - **0.5-0.7** = Moderately relevant, related concepts
+  - **0.3-0.5** = Loosely related
+  - **< 0.3** = Likely not relevant
+</Note>
+
+## Performance considerations
+
+```python
+# For large result sets, consider pagination
+def paginated_retrieve(query, page_size=5, page=1):
+    all_results = rag_retriever.retrieve(
+        query,
+        top_k=page_size * page
+    )
+    start = (page - 1) * page_size
+    end = start + page_size
+    return all_results[start:end]
+```
+
+## Implementation notes
+
+- Query embeddings are generated on-the-fly for each retrieval
+- Uses ChromaDB's `query()` method with cosine similarity
+- Results are automatically sorted by similarity (most relevant first)
+- Score threshold filtering happens after retrieval to reduce result set
+- Returns empty list on errors to allow graceful degradation
+- Thread-safe for concurrent queries (reads only from vector store)

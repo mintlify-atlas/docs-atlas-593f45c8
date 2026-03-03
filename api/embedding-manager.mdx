@@ -1,0 +1,170 @@
+---
+title: 'Embedding manager'
+description: 'Generate vector embeddings using Sentence Transformers'
+---
+
+The `EmbeddingManager` class handles the generation of vector embeddings for text using pre-trained Sentence Transformer models. It provides a simple interface for converting text into dense vector representations suitable for semantic search.
+
+## Class definition
+
+```python
+class EmbeddingManager:
+    def __init__(self, model_name="all-MiniLM-L6-v2")
+```
+
+## Constructor parameters
+
+<ParamField path="model_name" type="str" default="all-MiniLM-L6-v2">
+  Name of the Sentence Transformer model to use for generating embeddings. The default `all-MiniLM-L6-v2` is a lightweight, efficient model that produces 384-dimensional embeddings.
+</ParamField>
+
+<Note>
+  The model is automatically downloaded from Hugging Face on first use and cached locally for subsequent runs. The `all-MiniLM-L6-v2` model offers a good balance of speed and quality for code embeddings.
+</Note>
+
+## Methods
+
+### generate_embeddings()
+
+Generates vector embeddings for a list of text strings.
+
+```python
+def generate_embeddings(self, texts: List[str]) -> numpy.ndarray
+```
+
+<ParamField path="texts" type="List[str]" required>
+  List of text strings to generate embeddings for. Each string is encoded independently.
+</ParamField>
+
+<ParamField path="returns" type="numpy.ndarray">
+  NumPy array of embeddings with shape `(len(texts), embedding_dimension)`. For the default model, the embedding dimension is 384.
+</ParamField>
+
+<Note>
+  A progress bar is displayed during embedding generation to track progress for large batches.
+</Note>
+
+### _load_model()
+
+Internal method that loads the Sentence Transformer model.
+
+```python
+def _load_model(self) -> None
+```
+
+This method is automatically called during initialization. It:
+- Downloads the model if not cached
+- Loads the model into memory
+- Prints the embedding dimension for verification
+- Raises an exception if the model fails to load
+
+## Usage example
+
+```python
+from src.rag.embedding_manager import EmbeddingManager
+
+# Initialize with default model
+embedding_manager = EmbeddingManager()
+
+# Generate embeddings for text chunks
+texts = [
+    "def hello_world(): print('Hello, World!')",
+    "class MyClass: pass",
+    "import numpy as np"
+]
+
+embeddings = embedding_manager.generate_embeddings(texts)
+
+print(f"Generated embeddings shape: {embeddings.shape}")
+# Output: Generated embeddings shape: (3, 384)
+```
+
+## Alternative models
+
+<CodeGroup>
+```python Default (all-MiniLM-L6-v2)
+# Fast and efficient, 384 dimensions
+embedding_manager = EmbeddingManager()
+```
+
+```python Higher quality (all-mpnet-base-v2)
+# Better quality, 768 dimensions, slower
+embedding_manager = EmbeddingManager(
+    model_name="all-mpnet-base-v2"
+)
+```
+
+```python Multilingual (paraphrase-multilingual-MiniLM-L12-v2)
+# Supports 50+ languages, 384 dimensions
+embedding_manager = EmbeddingManager(
+    model_name="paraphrase-multilingual-MiniLM-L12-v2"
+)
+```
+</CodeGroup>
+
+## Integration example
+
+From `main.py` showing embedding generation in the RAG pipeline:
+
+```python
+# Initialize embedding manager
+embedding_manager = EmbeddingManager()
+
+# Split documents into chunks
+chunks = TextSplitter(docs).split_documents_into_chunks()
+
+# Extract text content from chunks
+texts = [doc.page_content for doc in chunks]
+
+# Generate embeddings for all chunks
+embeddings = embedding_manager.generate_embeddings(texts)
+
+# Store embeddings in vector database
+vector_store.add_documents(chunks, embeddings)
+```
+
+## Batch processing
+
+```python
+# Process large document sets in batches
+all_embeddings = []
+batch_size = 100
+
+for i in range(0, len(texts), batch_size):
+    batch = texts[i:i + batch_size]
+    batch_embeddings = embedding_manager.generate_embeddings(batch)
+    all_embeddings.append(batch_embeddings)
+
+# Combine all batches
+import numpy as np
+final_embeddings = np.vstack(all_embeddings)
+```
+
+## Model information
+
+<ResponseField name="Model" type="all-MiniLM-L6-v2">
+  - **Dimensions**: 384
+  - **Max sequence length**: 256 word pieces (~200 words)
+  - **Performance**: ~14,000 sentences/second on CPU
+  - **Size**: ~80 MB
+  - **Training**: Trained on 1 billion sentence pairs
+</ResponseField>
+
+## Error handling
+
+```python
+try:
+    embedding_manager = EmbeddingManager(model_name="invalid-model")
+except Exception as e:
+    print(f"Failed to load model: {e}")
+    # Fallback to default model
+    embedding_manager = EmbeddingManager()
+```
+
+## Implementation notes
+
+- Uses the `sentence-transformers` library for embedding generation
+- Models are automatically cached in `~/.cache/torch/sentence_transformers/`
+- Embeddings are generated on CPU by default (GPU acceleration available if PyTorch with CUDA is installed)
+- Progress bars are displayed for long-running embedding generation
+- Thread-safe for concurrent embedding generation

@@ -1,0 +1,140 @@
+---
+title: 'GitHub loader'
+description: 'Load and filter source code files from GitHub repositories'
+---
+
+The `GitHubCodeBaseLoader` class provides functionality to fetch source code files from GitHub repositories with intelligent filtering to exclude binary files, dependencies, and build artifacts.
+
+## Class definition
+
+```python
+class GitHubCodeBaseLoader:
+    def __init__(self, repo, branch, access_token=None)
+```
+
+## Constructor parameters
+
+<ParamField path="repo" type="str" required>
+  GitHub repository in `owner/repo` format (e.g., `"facebook/react"`)
+</ParamField>
+
+<ParamField path="branch" type="str" required>
+  Branch name to load files from (e.g., `"main"`, `"develop"`)
+</ParamField>
+
+<ParamField path="access_token" type="str" default="None">
+  GitHub personal access token for authentication. Required for private repositories and recommended for public repositories to avoid rate limiting.
+</ParamField>
+
+## Methods
+
+### load()
+
+Fetches and loads files from the GitHub repository using lazy loading.
+
+```python
+def load(self) -> List[Document]
+```
+
+<ParamField path="returns" type="List[Document]">
+  List of LangChain `Document` objects, each containing file content and metadata (path, source, etc.)
+</ParamField>
+
+<Note>
+  The `load()` method uses lazy loading to fetch files one by one, which is more memory-efficient for large repositories. Files that fail to load are automatically skipped with a warning message.
+</Note>
+
+### file_filter()
+
+Static method that determines whether a file should be included based on its path.
+
+```python
+@staticmethod
+def file_filter(path: str) -> bool
+```
+
+<ParamField path="path" type="str" required>
+  File path to check against exclusion rules
+</ParamField>
+
+<ParamField path="returns" type="bool">
+  `True` if the file should be included, `False` if it should be excluded
+</ParamField>
+
+## Excluded file types
+
+The loader automatically excludes the following file types and folders:
+
+<Accordion title="EXCLUDE_EXTENSIONS">
+  ```python
+  EXCLUDE_EXTENSIONS = (
+      ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".bmp", ".webp",
+      ".zip", ".tar", ".gz", ".rar", ".7z",
+      ".exe", ".dll", ".so", ".o", ".a", ".dylib",
+      ".mp3", ".mp4", ".wav", ".avi", ".mov",
+      ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+      ".lock", ".DS_Store", ".bin", ".ipynb",
+      ".woff", ".woff2", ".ttf", ".eot", ".otf",
+      ".pyc", ".class", ".jar",
+      ".db", ".sqlite", ".sqlite3",
+      ".min.js", ".min.css",
+  )
+  ```
+  Excludes images, archives, binaries, media files, documents, fonts, compiled files, databases, and minified assets.
+</Accordion>
+
+<Accordion title="EXCLUDE_FOLDERS">
+  ```python
+  EXCLUDE_FOLDERS = (
+      "node_modules/",
+      ".git/",
+      "dist/",
+      "build/",
+      "__pycache__/",
+      "venv/",
+      ".venv/",
+  )
+  ```
+  Excludes dependency directories, version control, build outputs, and virtual environments.
+</Accordion>
+
+## Usage example
+
+```python
+from src.rag.github_codebase_loader import GitHubCodeBaseLoader
+
+# Initialize the loader
+loader = GitHubCodeBaseLoader(
+    repo="facebook/react",
+    branch="main",
+    access_token="ghp_your_token_here"
+)
+
+# Load documents from the repository
+docs = loader.load()
+
+print(f"Loaded {len(docs)} files from GitHub!")
+```
+
+## Integration example
+
+From `main.py` showing how the loader is used in the RAG pipeline:
+
+```python
+# Load repository files
+docs = GitHubCodeBaseLoader(
+    repo=repo,
+    branch=branch,
+    access_token=github_token
+).load()
+
+# Continue with text splitting and embedding
+chunks = TextSplitter(docs).split_documents_into_chunks()
+```
+
+## Implementation notes
+
+- Uses LangChain's `GithubFileLoader` internally for API interactions
+- Lazy loading prevents memory issues with large repositories
+- Automatic error handling skips problematic files without stopping the entire process
+- Each loaded document includes metadata such as file path and source URL

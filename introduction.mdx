@@ -1,0 +1,154 @@
+---
+title: Introduction
+description: Chat with any GitHub repository using Retrieval-Augmented Generation (RAG)
+---
+
+# RepoRAGX: Chat with GitHub repositories
+
+RepoRAGX is a powerful CLI tool that lets you **chat with any GitHub repository** using Retrieval-Augmented Generation (RAG). Load a codebase, ask questions in natural language, and get context-aware answers powered by AI.
+
+<CardGroup cols={2}>
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Get up and running in 5 minutes
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Set up your environment and dependencies
+  </Card>
+  <Card title="How it works" icon="diagram-project" href="/concepts/how-it-works">
+    Learn how RepoRAGX works under the hood
+  </Card>
+  <Card title="API reference" icon="code" href="/api/github-loader">
+    Explore the Python API
+  </Card>
+</CardGroup>
+
+## How it works
+
+RepoRAGX uses a two-pipeline architecture to enable intelligent code search and question answering:
+
+### Pipeline 1: Data ingestion
+
+```
+GitHub Repo → Load Files → Chunk Code → Generate Embeddings → Store in ChromaDB
+```
+
+<Steps>
+  <Step title="Load">
+    Fetches all files from a GitHub repository using LangChain's `GithubFileLoader`, automatically filtering out binaries, images, and folders like `node_modules/`, `.git/`, and `venv/`
+  </Step>
+  <Step title="Chunk">
+    Splits code using LangChain's `RecursiveCharacterTextSplitter` with language-aware splitting. Supports 25+ programming languages including Python, JavaScript, TypeScript, Java, Go, Rust, and more
+  </Step>
+  <Step title="Embed">
+    Generates vector embeddings using Sentence Transformers' `all-MiniLM-L6-v2` model, converting code into 384-dimensional vectors
+  </Step>
+  <Step title="Store">
+    Persists embeddings in a local ChromaDB vector database with cosine similarity indexing for fast retrieval
+  </Step>
+</Steps>
+
+### Pipeline 2: RAG retrieval
+
+```
+User Query → Generate Query Embedding → Cosine Similarity Search → Retrieve Top-K Chunks → LLM Generates Answer
+```
+
+<Steps>
+  <Step title="Embed query">
+    Converts your question into a vector using the same Sentence Transformers model
+  </Step>
+  <Step title="Retrieve">
+    ChromaDB performs cosine similarity search and returns the top-K most relevant code chunks with file path metadata
+  </Step>
+  <Step title="Answer">
+    Sends retrieved code context (with file paths) + your question to Groq's `llama-3.3-70b-versatile` model, which generates a context-aware answer
+  </Step>
+</Steps>
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Language-aware chunking" icon="scissors">
+    Intelligently splits code based on language syntax for 25+ programming languages
+  </Card>
+  <Card title="Local vector storage" icon="database">
+    All embeddings stored locally in ChromaDB at `~/.RepoRAGX/vector_store`
+  </Card>
+  <Card title="Fast similarity search" icon="magnifying-glass">
+    Cosine similarity indexing enables sub-second retrieval times
+  </Card>
+  <Card title="Context-aware answers" icon="brain">
+    Powered by Groq's Llama 3.3 70B model for accurate, detailed responses
+  </Card>
+</CardGroup>
+
+## Use cases
+
+- **Onboarding**: Quickly understand a new codebase without reading every file
+- **Code archaeology**: Find where specific features are implemented
+- **Documentation**: Ask questions about APIs, architecture, and design patterns
+- **Debugging**: Locate error handling, authentication logic, or configuration files
+- **Learning**: Explore open-source projects by asking natural language questions
+
+## What you'll need
+
+<CardGroup cols={2}>
+  <Card title="GitHub token" icon="github">
+    Personal access token with `content:read` permission
+  </Card>
+  <Card title="Groq API key" icon="key">
+    Free API key from console.groq.com
+  </Card>
+</CardGroup>
+
+<Note>
+  RepoRAGX runs entirely locally except for the GitHub API (to fetch repository files) and Groq API (for LLM inference). All embeddings and vector storage are stored on your machine.
+</Note>
+
+## Example session
+
+```bash
+$ python -m src.main
+
+/**
+ *    __________                    __________    _____    ____________  ___
+ *    \______   \ ____ ______   ____\______   \  /  _  \  /  _____/\   \/  /
+ *     |       _// __ \\____ \ /  _ \|       _/ /  /_\  \/   \  ___ \     / 
+ *     |    |   \  ___/|  |_> >  <_> )    |   \/    |    \    \_\  \/     \ 
+ *     |____|_  /\___  >   __/ \____/|____|_  /\____|__  /\______  /___/\  \
+ *            \/     \/|__|                 \/         \/        \/      \_/
+ */
+
+Chat with your github repository
+
+GitHub Personal Access Token: ********
+Groq API Key: ********
+Model Name (default: llama-3.3-70b-versatile): 
+Repo (owner/repo): facebook/react
+Branch (default: main): main
+
+Initilizing github loader.....
+Fetching files from github....
+Loaded 847 files from github!
+Splitting documents into chunks...
+chunking completed
+Generating embeddings for 2341 texts...
+Adding 2341 documents to vector store...
+Successfully added 2341 documents to vector store
+
+Ask anything ('exit' to quit): Where is the useState hook implemented?
+> The useState hook is implemented in packages/react/src/ReactHooks.js...
+
+Ask anything ('exit' to quit): exit
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Install RepoRAGX" icon="download" href="/installation">
+    Set up Python 3.12, create a virtual environment, and install dependencies
+  </Card>
+  <Card title="Quick start guide" icon="rocket" href="/quickstart">
+    Run your first query in under 5 minutes
+  </Card>
+</CardGroup>
