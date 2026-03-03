@@ -1,0 +1,85 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "RepoRAGX",
+  "projectDescription": "A CLI tool that lets you chat with any GitHub repository using Retrieval-Augmented Generation (RAG)",
+  "theme": "aspen",
+  "primaryColor": "#0077bf",
+  "lightColor": "#4da6ff",
+  "darkColor": "#004d80",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/how-it-works",
+              "concepts/data-ingestion",
+              "concepts/rag-retrieval"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/api-keys",
+              "configuration/environment-setup",
+              "configuration/model-selection"
+            ]
+          },
+          {
+            "group": "Usage Guide",
+            "pages": [
+              "usage/running-cli",
+              "usage/querying-repos",
+              "usage/examples"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core Modules",
+            "pages": [
+              "api/github-loader",
+              "api/text-splitter",
+              "api/embedding-manager",
+              "api/vector-store",
+              "api/rag-retriever",
+              "api/groq-llm"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Chat with any GitHub repository using natural language",
+    "RAG-powered context-aware answers from codebase",
+    "Language-aware code chunking for 25+ programming languages",
+    "Vector embeddings using Sentence Transformers",
+    "ChromaDB vector database with cosine similarity search",
+    "Groq LLM integration for intelligent responses",
+    "Smart file filtering (excludes binaries, node_modules, etc.)",
+    "Persistent local vector storage"
+  ],
+  "publicApiSurface": [
+    "GitHubCodeBaseLoader.load()",
+    "GitHubCodeBaseLoader.file_filter()",
+    "TextSplitter.split_documents_into_chunks()",
+    "EmbeddingManager.generate_embeddings()",
+    "VectorStore.add_documents()",
+    "RAGRetriever.retrieve()",
+    "GroqLLM.rag()"
+  ]
+}
